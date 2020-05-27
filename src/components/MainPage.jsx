@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import './MainPage.scss'
+import API from './utils/API'
 import { makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
@@ -59,6 +60,7 @@ const useStyles = makeStyles((theme) => ({
     },
     table: {
         minWidth: 650,
+        textAlign: 'left'
     },
 }));
 
@@ -110,7 +112,7 @@ export default function MainPage() {
     const updateVisibilityConditions = function (val1, val2, val3, val4, val5, val6) {
         setOpen(false);
         setSearchResult([]);
-        (val4 || val5) && validateToken();
+        (val4 || val5) && authentificateUser();
         setShowLoginForm(val1);
         setShowSignUpForm(val2);
         setShowResetPassword(val3);
@@ -121,41 +123,37 @@ export default function MainPage() {
 
 
     const LogOut = function () {
-        axios.delete('/auth/sign_out', {headers: {"uid": localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}})
-            .then(res => {
-                localStorage.setItem('uid', '');
-                localStorage.setItem('client', '');
-                localStorage.setItem('access-token', res.headers['access-token']);
-                updateVisibilityConditions(true, false,false, false, false, 'You have successfully logged out!');
-            })
-            .catch((error) => {setErrorMessage("Login or sign up before log out!");})
-    }
-
-    const validateToken = function () {
-        axios.post('/auth/sign_in', {email: localStorage.getItem('uid'), password: localStorage.getItem('password')})
-            .then(res => {
-                localStorage.setItem('uid', res.headers.uid);
-                localStorage.setItem('client', res.headers.client);
-                localStorage.setItem('access-token', res.headers['access-token']);
+        API.logOut()
+            .then(() => {
+                if (localStorage.getItem('request-error') === 'true') {
+                    setErrorMessage( "Login or sign up before log out!");
+                } else {
+                    updateVisibilityConditions(true, false,false, false, false, 'You have successfully logged out!');
+                }
             })
     };
+
+    const authentificateUser = function () {
+       API.logIn(localStorage.getItem('uid'), localStorage.getItem('password'));
+    };
+
 
     const LogIn = function () {
         let email = receiveTextFormValue(emailRef);
         let password = receiveTextFormValue(passwordRef);
-        email && password
-            ?
-            axios.post('/auth/sign_in', {email: email, password: password})
-            .then(res => {
-                localStorage.setItem('uid', res.headers.uid);
-                localStorage.setItem('client', res.headers.client);
-                localStorage.setItem('access-token', res.headers['access-token']);
-                localStorage.setItem('password', password);
-                updateVisibilityConditions(false, false, false, true, false, 'You have successfully logged in!');
-            })
-            .catch((error) => {setErrorMessage("Incorrect email or password!");})
-            :
+        if (email && password) {
+            API.logIn(email, password)
+                .then(() => {
+                    if (localStorage.getItem('request-error') === 'true') {
+                        setErrorMessage("Incorrect email or password!");
+                    } else {
+                        updateVisibilityConditions(false, false, false, true, false, 'You have successfully logged in!');
+                    }
+                })
+
+        } else {
             setErrorMessage("Enter email and password!")
+        }
     };
 
     const receiveTextFormValue = function (ref) {
@@ -166,72 +164,74 @@ export default function MainPage() {
         let email = receiveTextFormValue(emailRef);
         let password = receiveTextFormValue(passwordRef);
         let passwordConfirmation = receiveTextFormValue(confirmPasswordRef);
-        email && password && passwordConfirmation
-            ?
-        axios.post('/auth', {email: email, password: password, password_confirmation: passwordConfirmation})
-            .then(res => {
-                localStorage.setItem('uid', res.headers.uid);
-                localStorage.setItem('client', res.headers.client);
-                localStorage.setItem('access-token', res.headers['access-token']);
-                localStorage.setItem('password', password);
-                updateVisibilityConditions(false, false, false, true, false, 'You have successfully signed up!');
-            })
-            .catch((error) => {
-                setErrorMessage(error.response.data.errors["full_messages"].toString());})
-            :
-            setErrorMessage("Enter email, password and password confirmation!");
+        if ( email && password && passwordConfirmation) {
+            API.signUp(email, password, passwordConfirmation)
+                .then(() => {
+                    if (localStorage.getItem('request-error') === 'true') {
+                        setErrorMessage("Incorrect email format or password(should be at least 6 characters)");
+                    } else {
+                        updateVisibilityConditions(false, false, false, true, false, 'You have successfully signed up!');
+                    }
+                })
+        } else {
+            setErrorMessage("Enter email, password and password confirmation!")
+        }
     };
 
     const resetPassword = function () {
         let password = receiveTextFormValue(passwordRef);
         let passwordConfirmation = receiveTextFormValue(confirmPasswordRef);
-        password && passwordConfirmation
-            ?
-        axios.put('/auth/password', {password: password, password_confirmation: passwordConfirmation}, {headers: {"uid": localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}} )
-            .then(res => {
-                updateVisibilityConditions(false, false, false, true, false, 'The password was successfully reset');
-                localStorage.setItem('password', 'password');
-                validateToken();
-            })
-            .catch((error) => {
-                setErrorMessage(error.response.data.errors["full_messages"].toString());})
-            :
+        if (password && passwordConfirmation) {
+            API.resetPassword(password, passwordConfirmation)
+                .then(() => {
+                    if (localStorage.getItem('request-error') === 'true') {
+                        setErrorMessage("Incorrect password or password confirmation");
+                    } else {
+                        authentificateUser();
+                        updateVisibilityConditions(false, false, false, true, false, 'The password was successfully reset');
+                    }
+                })
+        } else {
             setErrorMessage("Enter password and password confirmation!");
+        }
     };
 
     const makeRequest = function () {
         let searchString = receiveTextFormValue(searchStringRef);
         let substring = receiveTextFormValue(substringRef);
-        searchString && substring
-            ?
-        axios.post('/request/new_request',
-            {request: {search_string: searchString, substring: substring}},
-            {headers: {"uid": localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}})
-            .then(res => {
-                setSearchResult(res.data);
-            })
-            .catch((error) => {
-                setErrorMessage('Incorrect search query!')})
-            :
-            setErrorMessage("Enter Search string and substring!");
-        validateToken();
+        if (searchString && substring) {
+            API.searchSubstring(searchString, substring)
+                .then(() => {
+                    if (localStorage.getItem('request-error') === 'true') {
+                        setErrorMessage("Incorrect search query!");
+
+                    } else {
+                        debugger
+                        setSearchResult(JSON.parse(localStorage.getItem('searchResult')));
+                    }})
+        } else {setErrorMessage("Enter Search string and substring!");}
+        authentificateUser();
     }
 
     const getRequests = function () {
         setOpen(false);
-        validateToken();
-        axios.get('/request/', {headers: {uid: localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}})
-            .then(res => {
-                setSearchHistoryData(res.data);
+        authentificateUser();
+        API.gerRequestHistory()
+            .then(() => {
+                setSearchHistoryData(JSON.parse(localStorage.getItem('requestHistory')));
                 updateVisibilityConditions(false, false, false, false, true, '')
             })
     };
 
     const deleteRequest = function (id) {
         axios.delete('/request/delete_request',  {headers: {"uid": localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}, params: {id: id}})
-            .then(res => {
-                setSuccessMessage('Request has been successfully deleted!');
-                getRequests();
+            .then(() => {
+                if (localStorage.getItem('request-error') === 'true') {
+                    setErrorMessage('Such request does not exist!');
+                } else {
+                    setSuccessMessage('Request has been successfully deleted!');
+                    getRequests();
+                };
             })
     };
 
@@ -323,7 +323,6 @@ export default function MainPage() {
                             </Typography>
                         </form>
                         }
-
 
                         {(showLoginForm || showSignUpForm)  &&
                             <form className={classes.loginForm} noValidate autoComplete="off">
