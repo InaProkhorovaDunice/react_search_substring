@@ -1,6 +1,4 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
-import './MainPage.scss'
 import API from './utils/API'
 import { makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
@@ -62,6 +60,49 @@ const useStyles = makeStyles((theme) => ({
         minWidth: 650,
         textAlign: 'left'
     },
+    registrationForm: {
+        textAlign: "center",
+        margin: "10px",
+    },
+    underlined: {
+        textDecoration: "underline",
+    },
+    alert: {
+        position: "absolute",
+        top: "32px",
+        width: "100%",
+    },
+    mainSpace: {
+        width: "100%",
+        height: "calc(100% - 90px)",
+        position: "absolute",
+        top: "64px",
+        left: "0",
+        overflow: "auto",
+    },
+    centralForm: {
+        width: "250px",
+        height: "250px",
+        position: "absolute",
+        top: "0",
+        right: "0",
+        bottom: "0",
+        left: "0",
+        margin: "auto",
+    },
+    requestTable: {
+        width: "650px",
+        position: "absolute",
+        top: "0",
+        right: "0",
+        bottom: "0",
+        left: "0",
+        margin: "auto",
+    },
+    tableTitle: {
+        marginBottom: "20px",
+        marginTop: "50px",
+    },
 }));
 
 export default function MainPage() {
@@ -74,14 +115,16 @@ export default function MainPage() {
     const [errorMessage, setErrorMessage] = useState('');
     const [searchResult, setSearchResult] = useState([]);
     const [searchHistoryData, setSearchHistoryData] = useState([]);
+    const [emailValue, setEmailValue] = useState('');
+    const [passwordValue, setPasswordValue] = useState('');
+    const [passwordConfirmValue, setPasswordConfirmValue] = useState('');
+    const [resetPassValue, setResetPassValue] = useState('');
+    const [resetPassConfirmValue, setResetPassConfirmValue] = useState('');
+    const [searchStringValue, setSearchStringValue] = useState('');
+    const [substringValue, setSubstringValue] = useState('');
     const classes = useStyles();
     const [open, setOpen] = React.useState(false);
     const anchorRef = React.useRef(null);
-    const emailRef = React.useRef(null);
-    const passwordRef = React.useRef(null);
-    const confirmPasswordRef = React.useRef(null);
-    const searchStringRef = React.useRef(null);
-    const substringRef = React.useRef(null);
 
     const handleToggle = () => {
         setOpen((prevOpen) => !prevOpen);
@@ -112,7 +155,7 @@ export default function MainPage() {
     const updateVisibilityConditions = function (val1, val2, val3, val4, val5, val6) {
         setOpen(false);
         setSearchResult([]);
-        (val4 || val5) && authentificateUser();
+        (val3 || val4 || val5) && authentificateUser();
         setShowLoginForm(val1);
         setShowSignUpForm(val2);
         setShowResetPassword(val3);
@@ -134,13 +177,13 @@ export default function MainPage() {
     };
 
     const authentificateUser = function () {
-       API.logIn(localStorage.getItem('uid'), localStorage.getItem('password'));
+       API.logIn(localStorage.getItem('uid'), localStorage.getItem('password'))
     };
 
 
     const LogIn = function () {
-        let email = receiveTextFormValue(emailRef);
-        let password = receiveTextFormValue(passwordRef);
+        let email = emailValue;
+        let password = passwordValue;
         if (email && password) {
             API.logIn(email, password)
                 .then(() => {
@@ -150,20 +193,15 @@ export default function MainPage() {
                         updateVisibilityConditions(false, false, false, true, false, 'You have successfully logged in!');
                     }
                 })
-
         } else {
             setErrorMessage("Enter email and password!")
         }
     };
 
-    const receiveTextFormValue = function (ref) {
-        return ref.current && ref.current.children[1] && ref.current.children[1].children[0] && ref.current.children[1].children[0].value;
-    };
-
     const SignUp = function () {
-        let email = receiveTextFormValue(emailRef);
-        let password = receiveTextFormValue(passwordRef);
-        let passwordConfirmation = receiveTextFormValue(confirmPasswordRef);
+        let email = emailValue;
+        let password = passwordValue;
+        let passwordConfirmation = passwordConfirmValue;
         if ( email && password && passwordConfirmation) {
             API.signUp(email, password, passwordConfirmation)
                 .then(() => {
@@ -179,8 +217,8 @@ export default function MainPage() {
     };
 
     const resetPassword = function () {
-        let password = receiveTextFormValue(passwordRef);
-        let passwordConfirmation = receiveTextFormValue(confirmPasswordRef);
+        let password = resetPassValue;
+        let passwordConfirmation = resetPassConfirmValue;
         if (password && passwordConfirmation) {
             API.resetPassword(password, passwordConfirmation)
                 .then(() => {
@@ -197,8 +235,8 @@ export default function MainPage() {
     };
 
     const makeRequest = function () {
-        let searchString = receiveTextFormValue(searchStringRef);
-        let substring = receiveTextFormValue(substringRef);
+        let searchString = searchStringValue;
+        let substring = substringValue;
         if (searchString && substring) {
             API.searchSubstring(searchString, substring)
                 .then(() => {
@@ -206,12 +244,11 @@ export default function MainPage() {
                         setErrorMessage("Incorrect search query!");
 
                     } else {
-                        debugger
                         setSearchResult(JSON.parse(localStorage.getItem('searchResult')));
                     }})
         } else {setErrorMessage("Enter Search string and substring!");}
         authentificateUser();
-    }
+    };
 
     const getRequests = function () {
         setOpen(false);
@@ -224,19 +261,14 @@ export default function MainPage() {
     };
 
     const deleteRequest = function (id) {
-        axios.delete('/request/delete_request',  {headers: {"uid": localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}, params: {id: id}})
+        id && API.deleteSearchRequest(id)
             .then(() => {
-                if (localStorage.getItem('request-error') === 'true') {
-                    setErrorMessage('Such request does not exist!');
-                } else {
-                    setSuccessMessage('Request has been successfully deleted!');
-                    getRequests();
-                };
+                localStorage.getItem('request-error') === 'false' && getRequests();
             })
     };
 
     return (
-            <div className="MainPage">
+            <div className={classes.mainPage}>
                 <AppBar position="absolute">
                     <Toolbar>
                         <Typography variant="h6" className={classes.title}>
@@ -281,7 +313,7 @@ export default function MainPage() {
                     </Toolbar>
                 </AppBar>
 
-                <div className={"alert"}>
+                <div className={classes.alert}>
                     <div className={classes.alert}>
                         {errorMessage &&
                             <ClickAwayListener onClickAway={() => setErrorMessage('')}>
@@ -301,27 +333,27 @@ export default function MainPage() {
                     </div>
                 </div>
 
-                <div className={"mainSpace"}>
-                    <div className={'centralForm'}>
+                <div className={classes.mainSpace}>
+                    <div className={classes.centralForm}>
                         {showSearchQuery &&
-                        <form className={classes.loginForm} noValidate autoComplete="off">
-                            <Typography variant="h6" component="h2">
-                                Make a search query
-                            </Typography>
-                            <TextField ref={searchStringRef} id="standard-basic" label="Search string" />
-                            <TextField ref={substringRef} id="standard-basic" label="Substring" />
-                            <div className={classes.loginButton}>
-                                <Button variant="contained" color="primary" onClick={makeRequest}>
-                                    Search
-                                </Button>
-                            </div>
-                            <Typography variant="h6" component="h2">
-                                {searchResult.length > 0 ? (searchResult[0] === 'No' ? 'No' : 'Yes') : ''}
-                            </Typography>
-                            <Typography variant="h6" component="h2">
-                                {searchResult.map((el) => <span className={el.underlined ? "underlined" : ""}>{el.substring}</span>)}
-                            </Typography>
-                        </form>
+                            <form className={classes.loginForm} noValidate autoComplete="off">
+                                <Typography variant="h6" component="h2">
+                                    Make a search query
+                                </Typography>
+                                <TextField value={searchStringValue} id="standard-basic" label="Search string" onChange={e => setSearchStringValue(e.target.value)} />
+                                <TextField value={substringValue} id="standard-basic" label="Substring" onChange={e => setSubstringValue(e.target.value)} />
+                                <div className={classes.loginButton}>
+                                    <Button variant="contained" color="primary" onClick={makeRequest}>
+                                        Search
+                                    </Button>
+                                </div>
+                                <Typography variant="h6" component="h2">
+                                    {searchResult.length > 0 ? (searchResult[0] === 'No' ? 'No' : 'Yes') : ''}
+                                </Typography>
+                                <Typography variant="h6" component="h2">
+                                    {searchResult.map((el) => <span className={el.underlined ? "underlined" : ""}>{el.substring}</span>)}
+                                </Typography>
+                            </form>
                         }
 
                         {(showLoginForm || showSignUpForm)  &&
@@ -336,10 +368,10 @@ export default function MainPage() {
                                         Sign up
                                     </Typography>
                                 }
-                                <TextField ref={emailRef} id="standard-basic" label="Email" />
-                                <TextField ref={passwordRef} id="standard-basic" label="Password" />
+                                <TextField value={emailValue} id="standard-basic" label="Email" onChange={e => setEmailValue(e.target.value)} />
+                                <TextField value={passwordValue} id="standard-basic" label="Password" onChange={e => setPasswordValue(e.target.value)} />
                                 {showSignUpForm &&
-                                    <TextField ref={confirmPasswordRef} id="standard-basic" label="Password confirmation" />
+                                    <TextField value={passwordConfirmValue} id="standard-basic" label="Password confirmation" onChange={e => setPasswordConfirmValue(e.target.value)} />
                                 }
                                 <div className={classes.loginButton}>
                                     {showLoginForm
@@ -361,8 +393,8 @@ export default function MainPage() {
                                 <Typography variant="h6" component="h2">
                                     Reset password
                                 </Typography>
-                                <TextField ref={passwordRef} id="standard-basic" label="Password" />
-                                <TextField ref={confirmPasswordRef} id="standard-basic" label="Password confirmation" />
+                                <TextField value={resetPassValue} id="standard-basic" label="Password" onChange={e => setResetPassValue(e.target.value)} />
+                                <TextField value={resetPassConfirmValue} id="standard-basic" label="Password confirmation" onChange={e => setResetPassConfirmValue(e.target.value)} />
                                 <div className={classes.loginButton}>
                                     <Button variant="contained" color="primary" onClick={resetPassword}>
                                         Reset
@@ -371,11 +403,10 @@ export default function MainPage() {
                             </form>
                         }
 
-
                     </div>
                     {showRequestHistory &&
-                        <div className={"table"}>
-                            <Typography variant="h6" component="h2" className={"tableTitle"}>Request history</Typography>
+                        <div className={classes.requestTable}>
+                            <Typography variant="h6" component="h2" className={classes.tableTitle}>Request history</Typography>
                             <TableContainer component={Paper}>
                                 <Table className={classes.table} aria-label="simple table">
                                     <TableHead>
@@ -389,7 +420,7 @@ export default function MainPage() {
                                     <TableBody>
                                         {searchHistoryData.map((row) => (
                                             <TableRow key={row.id}>
-                                                <TableCell align="right">{row.search_string}</TableCell>
+                                                <TableCell align="left">{row.search_string}</TableCell>
                                                 <TableCell align="right">{row.substring}</TableCell>
                                                 <TableCell align="right">
                                                     {row.result_data.length > 0
@@ -398,7 +429,7 @@ export default function MainPage() {
                                                         ?
                                                         'No'
                                                         :
-                                                        row.result_data.map((el) => <span className={el.underlined ? "underlined" : ""}>{el.substring}</span>)}
+                                                        row.result_data.map((el) => <span className={el.underlined ? classes.underlined : ""}>{el.substring}</span>)}
                                                 </TableCell>
                                                 <TableCell align="right">
                                                     <Button onClick={() => deleteRequest(row.id)}><DeleteOutlinedIcon /></Button>

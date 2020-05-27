@@ -52,7 +52,7 @@ export default {
                                                  })
                                                  .catch((error) => localStorage.setItem('request-error', true))
                     },
-    gerRequestHistory: (searchString, substring) => {
+    gerRequestHistory: () => {
                               return axios.get('/request/', {headers: {uid: localStorage.getItem("uid"), client: localStorage.getItem("client"), 'access-token': localStorage.getItem("access-token")}})
                                                  .then(res => {
                                                      localStorage.setItem('request-error', false);
